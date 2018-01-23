@@ -1,0 +1,49 @@
+{
+  "name": "gatsby-source-graffiti-sqlserver",
+  "version": "0.0.1",
+  "description": "Gatsby plugin which pulls blog posts out of a Graffiti SQL Server database",
+  "scripts": {
+    "build": "babel src --out-dir . --ignore __tests__",
+    "watch": "babel -w src --out-dir . --ignore __tests__",
+    "prepublish": "cross-env NODE_ENV=production npm run build",
+    "cover": "nyc -r text-summary -r html -- npm run test:only",
+    "cover:show": "opn coverage/index.html",
+    "test:only": "mocha -R spec spec",
+    "test:watch": "npm run test:only -- -w",
+    "test": "npm run cover -- --fix"
+  },
+  "keywords": [
+    "gatsby",
+    "gatsby-plugin",
+    "graffiti"
+  ],
+  "author": "Dan Hounshell <dan@danhounshell.com>",
+  "license": "MIT",
+  "nyc": {
+    "exclude": [
+      "spec",
+      "**/bin",
+      "**/lib"
+    ]
+  },
+  "dependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-runtime": "^6.26.0",
+    "crypto": "^1.0.1",
+    "seriate": "^0.13.1"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "cross-env": "^5.1.3",
+    "dirty-chai": "^2.0.1",
+    "lodash": "^4.17.4",
+    "mocha": "^5.0.0",
+    "nyc": "^11.4.1",
+    "opn-cli": "^3.1.0",
+    "proxyquire": "^1.8.0",
+    "sinon": "^4.2.1",
+    "sinon-chai": "^2.14.0",
+    "when": "^3.7.8"
+  }
+}
