@@ -59,3 +59,4 @@ node_modules
 gatsby-node.js
 sql.js
 package-lock.json
+spec/index.js
