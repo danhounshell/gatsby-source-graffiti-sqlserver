@@ -3,7 +3,10 @@ const sql = require( "seriate" );
 let log;
 
 const getNewPosts = ( queryOptions, lastFetched ) => {
-    let query = `SELECT p.Title as title, p.PostBody as postBody, p.CreatedOn as createdOn, p.ModifiedOn as modifiedOn, p.Published as publishedOn, p.Content_Type as contentType, p.Name as slug, p.Tag_List as tagList, c.Name as categoryName, p.ModifiedBy as modifiedBy, p.CreatedBy as createdBy, p.UniqueId as id FROM graffiti_posts p INNER JOIN graffiti_Categories c ON p.CategoryId = c.Id WHERE p.IsPublished=1 AND p.IsDeleted=0 AND c.IsDeleted=0 AND p.CategoryId = ${ queryOptions.categoryId }`;
+    let query = "SELECT p.Title as title, p.PostBody as postBody, p.Published as publishedOn, p.Content_Type as contentType, p.Name as slug, p.Tag_List as tagList, c.Name as categoryName, p.CreatedBy as createdBy, p.UniqueId as id FROM graffiti_posts p INNER JOIN graffiti_Categories c ON p.CategoryId = c.Id WHERE p.IsPublished=1 AND p.IsDeleted=0 AND c.IsDeleted=0";
+    if ( queryOptions && queryOptions.categoryId ) {
+    	query += ` AND p.CategoryId = ${ queryOptions.categoryId }`;
+    }
     if ( lastFetched ) {
         query+= ` AND p.ModifiedOn > '${ new Date( lastFetched ).toISOString() }'`;
     }
@@ -14,7 +17,11 @@ const getNewPosts = ( queryOptions, lastFetched ) => {
 
 const getDeletedPosts = ( queryOptions, lastFetched ) => {
     if ( lastFetched ) {
-        let query = `SELECT p.Title as title, p.PostBody as postBody, p.CreatedOn as createdOn, p.ModifiedOn as modifiedOn, p.Published as publishedOn, p.Content_Type as contentType, p.Name as slug, p.Tag_List as tagList, c.Name as categoryName, p.ModifiedBy as modifiedBy, p.CreatedBy as createdBy, p.UniqueId as id FROM graffiti_posts p INNER JOIN graffiti_Categories c ON p.CategoryId = c.Id WHERE ( p.IsPublished=0 OR p.IsDeleted=1 OR c.IsDeleted=1 ) AND p.CategoryId = ${ queryOptions.categoryId } AND p.ModifiedOn > '${ new Date( lastFetched ).toISOString() }' ORDER BY CreatedOn DESC;`;
+        let query = "SELECT p.Title as title, p.PostBody as postBody, p.Published as publishedOn, p.Content_Type as contentType, p.Name as slug, p.Tag_List as tagList, c.Name as categoryName, p.CreatedBy as createdBy, p.UniqueId as id FROM graffiti_posts p INNER JOIN graffiti_Categories c ON p.CategoryId = c.Id WHERE ( p.IsPublished=0 OR p.IsDeleted=1 OR c.IsDeleted=1 )";
+        if ( queryOptions && queryOptions.categoryId ) {
+        	query += ` AND p.CategoryId = ${ queryOptions.categoryId }`;
+        }
+        query += ` AND p.ModifiedOn > '${ new Date( lastFetched ).toISOString() }' ORDER BY CreatedOn DESC;`;
         return executeQuery( query );
     } else {
         // this has never been run before so there should be no existing nodes to delete

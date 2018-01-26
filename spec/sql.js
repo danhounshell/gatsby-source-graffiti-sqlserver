@@ -7,40 +7,40 @@ describe( "sql", function() {
 
     const config = {
         "server": "localhost",
-        "user": "username", 
+        "user": "username",
         "password": "password",
-        "database": "databass"        
+        "database": "databass"
     };
 
     const data = [
-        { 
+        {
             id: "123",
             title: "first post",
-            postBody: "<b>I am a post body</b>", 
-            createdOn: "2017-08-04 05:58:02.563", 
-            modifiedOn: "2017-08-04 05:58:02.563", 
-            contentType: "text/html", 
-            slug: "first-post", 
-            tagList: "node,npm", 
-            categoryName: "Blog", 
-            modifiedBy: "dan", 
-            createdBy: "dan", 
+            postBody: "<b>I am a post body</b>",
+            createdOn: "2017-08-04 05:58:02.563",
+            modifiedOn: "2017-08-04 05:58:02.563",
+            contentType: "text/html",
+            slug: "first-post",
+            tagList: "node,npm",
+            categoryName: "Blog",
+            modifiedBy: "dan",
+            createdBy: "dan",
             publishedOn: "2017-08-04 05:58:02.563"
-         }, 
-         { 
+         },
+         {
             id: "456",
             title: "second post",
-            postBody: "<b>I am a post body</b>", 
-            createdOn: "2017-08-04 05:58:02.563", 
-            modifiedOn: "2017-08-04 05:58:02.563", 
-            contentType: "text/html", 
-            slug: "second-post", 
-            tagList: "node,npm", 
-            categoryName: "Blog", 
-            modifiedBy: "dan", 
-            createdBy: "dan", 
+            postBody: "<b>I am a post body</b>",
+            createdOn: "2017-08-04 05:58:02.563",
+            modifiedOn: "2017-08-04 05:58:02.563",
+            contentType: "text/html",
+            slug: "second-post",
+            tagList: "node,npm",
+            categoryName: "Blog",
+            modifiedBy: "dan",
+            createdBy: "dan",
             publishedOn: "2017-08-04 05:58:02.563"
-         }, 
+         },
     ];
 
     beforeEach( () => {
@@ -48,13 +48,13 @@ describe( "sql", function() {
             error: sinon.stub()
         };
         seriateStub = {
-            setDefaultConfig: sinon.stub(), 
+            setDefaultConfig: sinon.stub(),
             execute: ( sqlShouldResolve ) ? sinon.stub().resolves( data ) : sinon.stub().rejects( "An error occured" )
         };
         const Sql = proxyquire( "../../src/sql.js", {
             seriate: seriateStub
-        } );         
-        sql = Sql( config, logStub );  
+        } );
+        sql = Sql( config, logStub );
     } );
 
     afterEach( () => {
@@ -75,7 +75,7 @@ describe( "sql", function() {
         beforeEach( () => {
             posts = sql.getNewPosts( { categoryId: 2 }, Date.now() );
         } );
-        
+
         it( "returns posts", () => {
             return posts.then( ( dat ) => {
                 dat.length.should.equal( 2 );
@@ -91,9 +91,9 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getNewPosts( { categoryId: 2 } );
+            posts = sql.getNewPosts();
         } );
-        
+
         it( "returns posts", () => {
             return posts.then( ( dat ) => {
                 dat.length.should.equal( 2 );
@@ -126,16 +126,16 @@ describe( "sql", function() {
             return posts.then( () => {
                 logStub.error.should.be.calledOnce();
             } );
-        } );        
-    } );    
+        } );
+    } );
 
     describe( "when calling getDeletedPosts", () => {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getDeletedPosts( { categoryId: 2 }, Date.now() );
+            posts = sql.getDeletedPosts( null, Date.now() );
         } );
-        
+
         it( "returns posts", () => {
             return posts.then( ( dat ) => {
                 dat.length.should.equal( 2 );
@@ -153,7 +153,7 @@ describe( "sql", function() {
         beforeEach( () => {
             posts = sql.getDeletedPosts( { categoryId: 2 }, null );
         } );
-        
+
         it( "returns null for posts", () => {
             posts.should.eventually.be.null();
         } );
@@ -163,7 +163,23 @@ describe( "sql", function() {
         } );
     } );
 
-    describe( "when sql errors when calling getDeleted", () => {
+    describe( "when calling getDeletedPosts with no lastFetched arg", () => {
+        let posts;
+
+        beforeEach( () => {
+            posts = sql.getDeletedPosts();
+        } );
+
+        it( "returns null for posts", () => {
+            posts.should.eventually.be.null();
+        } );
+
+        it( "should not execute query", () => {
+            seriateStub.execute.should.not.be.called();
+        } );
+    } );
+
+    describe( "when sql errors when calling getDeletedPosts", () => {
         before( () => {
             sqlShouldResolve = false;
         } );
@@ -184,6 +200,6 @@ describe( "sql", function() {
             return posts.then( () => {
                 logStub.error.should.be.calledOnce();
             } );
-        } );        
+        } );
     } );
 } );
