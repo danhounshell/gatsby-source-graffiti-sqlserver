@@ -14,13 +14,10 @@ describe( "gatsby-node", function() {
             id: "123",
             title: "first post",
             postBody: "<b>I am a post body</b>",
-            createdOn: "2017-08-04 05:58:02.563",
-            modifiedOn: "2017-08-04 05:58:02.563",
             contentType: "text/html",
             slug: "first-post",
-            tagList: "node,npm",
-            categoryName: "Blog",
-            modifiedBy: "dan",
+            tags: "node,npm",
+            category: "Blog",
             createdBy: "dan",
             publishedOn: "2017-08-04 05:58:02.563"
          },
@@ -28,13 +25,10 @@ describe( "gatsby-node", function() {
             id: "456",
             title: "second post",
             postBody: "<b>I am a post body</b>",
-            createdOn: "2017-08-04 05:58:02.563",
-            modifiedOn: "2017-08-04 05:58:02.563",
             contentType: "text/html",
             slug: "second-post",
-            tagList: "node,npm",
-            categoryName: "Blog",
-            modifiedBy: "dan",
+            tags: "node,npm",
+            category: "Blog",
             createdBy: "dan",
             publishedOn: "2017-08-04 05:58:02.563"
          },
@@ -50,7 +44,8 @@ describe( "gatsby-node", function() {
         query: {
             categoryId: 2
         },
-        offlineMode: false
+        offlineMode: false,
+        excerptLength: 200
     };
 
     beforeEach( () => {
@@ -113,7 +108,10 @@ describe( "gatsby-node", function() {
     describe( "when executing sourceNodes", () => {
         it( "should set sql config", () => {
             sqlStub.should.be.calledOnce();
-            sqlStub.getCall( 0 ).args[ 0 ].should.equal( pluginOptions.sql );
+            sqlStub.getCall( 0 ).args[ 0 ].server.should.equal( pluginOptions.sql.server );
+            sqlStub.getCall( 0 ).args[ 0 ].user.should.equal( pluginOptions.sql.user );
+            sqlStub.getCall( 0 ).args[ 0 ].password.should.equal( pluginOptions.sql.password );
+            sqlStub.getCall( 0 ).args[ 0 ].database.should.equal( pluginOptions.sql.database );
         } );
 
         it( "should call createNode for each item returned from sql", () => {

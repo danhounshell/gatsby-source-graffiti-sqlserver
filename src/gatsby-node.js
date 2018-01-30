@@ -1,8 +1,10 @@
+const _ = require( "lodash" );
 const crypto = require( "crypto" );
+const htmlToText = require( "html-to-text" );
 const SQL = require( "./sql" );
 const staticData = require( "./static.json" );
 
-const transformPostToNode = ( post ) => {
+const transformPostToNode = ( post, options ) => {
     let internal = {
         type: "GraffitiBlogPost",
         mediaType: post.contentType,
@@ -20,19 +22,27 @@ const transformPostToNode = ( post ) => {
             publishedOn: post.publishedOn,
             slug: post.slug,
             content: post.postBody,
-            tags: post.tagList.split(","),
-            categoryName: post.categoryName,
+            excerpt: _.truncate( htmlToText.fromString( post.postBody, { ignoreHref: true, ignoreImage: true } ), { length: options.excerptLength, separator: " " } ),
+            tags: post.tags.split(","),
+            category: _.kebabCase( post.category ),
             createdBy: post.createdBy
         } )
     );
 }
 
 exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOptions ) => {
+	const defaultOptions = {
+		offlineMode: false,
+		excerptLength: 255,
+		sql: {},
+		query: {}
+	}
     const { createNode, deleteNode, setPluginStatus } = boundActionCreators;
+    const options = _.merge( defaultOptions, pluginOptions );
 
-    const sql = ( pluginOptions.offlineMode ) ?
+    const sql = ( options.offlineMode ) ?
     	null :
-    	SQL( pluginOptions.sql, reporter );
+    	SQL( options.sql, reporter );
 
     let lastFetchedPosts, lastDeletedPosts;
     if ( store && store.getState() && store.getState().status && store.getState().status.plugins &&
@@ -46,12 +56,12 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
     }
 
     // get only posts modified since last check
-    let newPosts = ( pluginOptions.offlineMode ) ?
+    let newPosts = ( options.offlineMode ) ?
     	staticData :
-    	await sql.getNewPosts( pluginOptions.query, lastFetchedPosts );
+    	await sql.getNewPosts( options.query, lastFetchedPosts );
     if ( newPosts && newPosts.length > 0 ) {
         newPosts.forEach( post => {
-            createNode( transformPostToNode( post ) );
+            createNode( transformPostToNode( post, options ) );
         } );
         reporter.info( `fetched ${ newPosts.length } new nodes`)
         setPluginStatus( { lastFetchedPosts: Date.now() } );
@@ -61,12 +71,12 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 
     // delete any nodes where post has been deleted since last check
     if ( lastDeletedPosts ) {
-        let deletedPosts = ( pluginOptions.offlineMode ) ?
+        let deletedPosts = ( options.offlineMode ) ?
        		null :
-       		await sql.getDeletedPosts( pluginOptions.query, lastDeletedPosts );
+       		await sql.getDeletedPosts( options.query, lastDeletedPosts );
         if ( deletedPosts && deletedPosts.length > 0 ) {
             deletedPosts.forEach( post => {
-                let node = transformPostToNode( post );
+                let node = transformPostToNode( post, options );
                 deleteNode( node.id, node );
             } );
             reporter.info( `deleted ${ deletedPosts.length } nodes`)

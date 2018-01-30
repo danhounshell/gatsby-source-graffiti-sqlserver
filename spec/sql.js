@@ -1,4 +1,5 @@
 require( "./helpers/setup" );
+const static = require( "../src/static.json" );
 
 describe( "sql", function() {
     let sql, seriateStub, logStub;
@@ -17,13 +18,10 @@ describe( "sql", function() {
             id: "123",
             title: "first post",
             postBody: "<b>I am a post body</b>",
-            createdOn: "2017-08-04 05:58:02.563",
-            modifiedOn: "2017-08-04 05:58:02.563",
             contentType: "text/html",
             slug: "first-post",
-            tagList: "node,npm",
-            categoryName: "Blog",
-            modifiedBy: "dan",
+            tags: "node,npm",
+            category: "Blog",
             createdBy: "dan",
             publishedOn: "2017-08-04 05:58:02.563"
          },
@@ -31,13 +29,10 @@ describe( "sql", function() {
             id: "456",
             title: "second post",
             postBody: "<b>I am a post body</b>",
-            createdOn: "2017-08-04 05:58:02.563",
-            modifiedOn: "2017-08-04 05:58:02.563",
             contentType: "text/html",
             slug: "second-post",
-            tagList: "node,npm",
-            categoryName: "Blog",
-            modifiedBy: "dan",
+            tags: "node,npm",
+            category: "Blog",
             createdBy: "dan",
             publishedOn: "2017-08-04 05:58:02.563"
          },
