@@ -8,13 +8,13 @@ const transformPostToNode = ( post, options ) => {
     let internal = {
         type: "GraffitiBlogPost",
         mediaType: post.contentType,
-        content: post.postBody,
         contentDigest: crypto.createHash( "md5" ).update( JSON.stringify( post ) ).digest( "hex" )
     }
     // Stringify date objects
     return JSON.parse(
         JSON.stringify( {
             id: post.id,
+            ids: [ post.id, "" ],
             parent: null,
             children: [],
             internal,
