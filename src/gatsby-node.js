@@ -25,7 +25,8 @@ const transformPostToNode = ( post, options ) => {
             excerpt: _.truncate( htmlToText.fromString( post.postBody, { ignoreHref: true, ignoreImage: true } ), { length: options.excerptLength, separator: " " } ),
             tags: post.tags.split(","),
             category: _.kebabCase( post.category ),
-            createdBy: post.createdBy
+            createdBy: post.createdBy,
+            comments: post.comments
         } )
     );
 }
@@ -35,7 +36,10 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 		offlineMode: false,
 		excerptLength: 255,
 		sql: {},
-		query: {}
+		query: {
+			categoryId: null,
+			includeComments: false
+		}
 	}
     const { createNode, deleteNode, setPluginStatus } = boundActionCreators;
     const options = _.merge( defaultOptions, pluginOptions );

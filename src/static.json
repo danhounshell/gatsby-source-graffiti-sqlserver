@@ -7,7 +7,23 @@
     "tags": "node",
     "category": "Blog",
     "createdBy": "dan",
-    "publishedOn": "2017-08-31 05:12:02.000"
+    "publishedOn": "2017-08-31 05:12:02.000",
+    "comments": [
+        {
+            "id": "079B069B-26E2-4BE1-8083-FFA88F3DFDB3",
+            "content": "<p>BTW- BlogBob v0.3 is available, with lots of improvements and cool new features</p>\n<p><br></p>\n<p><br>Check it out: <a target=\"_new\" href=\"http://somesite.net/ashto/archive/2004/08/19/217395\">http://somesite.net/ashto/archive/2004/08/19/217395</a></p>\n",
+            "publishedOn": "2004-08-19T15:10:00.000Z",
+            "author": "Ashy Szo",
+            "authorUrl": "http://somesite.net/ashto",
+            "isTrackback": false },
+        {
+            "id": "B4C846DF-B8D5-4AC5-9B20-B5BEE72232F3",
+            "content": "<p>Thanks for the update, Ashy.  This will be the first thing I do this morning.</p>\n",
+            "publishedOn": "2004-08-20T04:09:00.000Z",
+            "author": "Dan",
+            "authorUrl": "http://www.anothersite.com",
+            "isTrackback": false
+        } ]
 }, {
     "id": "ABCABC456456",
     "title": "Second Post",

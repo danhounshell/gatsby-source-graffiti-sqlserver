@@ -16,6 +16,7 @@ describe( "sql", function() {
     const data = [
         {
             id: "123",
+            postId: 1,
             title: "first post",
             postBody: "<b>I am a post body</b>",
             contentType: "text/html",
@@ -27,6 +28,7 @@ describe( "sql", function() {
          },
          {
             id: "456",
+            postId: 2,
             title: "second post",
             postBody: "<b>I am a post body</b>",
             contentType: "text/html",
@@ -68,7 +70,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getNewPosts( { categoryId: 2 }, Date.now() );
+            posts = sql.getNewPosts( { categoryId: 2, includeComments: false }, Date.now() );
         } );
 
         it( "returns posts", () => {
@@ -78,7 +80,9 @@ describe( "sql", function() {
         } );
 
         it( "executes query", () => {
-            seriateStub.execute.should.be.calledOnce();
+            return posts.then( () => {
+                seriateStub.execute.should.be.calledOnce();
+            } );
         } );
     } );
 
@@ -86,7 +90,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getNewPosts();
+            posts = sql.getNewPosts({ categoryId: null, includeComments: false });
         } );
 
         it( "returns posts", () => {
@@ -96,7 +100,29 @@ describe( "sql", function() {
         } );
 
         it( "executes query", () => {
-            seriateStub.execute.should.be.calledOnce();
+            return posts.then( () => {
+                seriateStub.execute.should.be.calledOnce();
+            } );
+        } );
+    } );
+
+    describe( "when calling getNewPosts including comments", () => {
+        let posts;
+
+        beforeEach( () => {
+            posts = sql.getNewPosts( { categoryId: 2, includeComments: true }, Date.now() );
+        } );
+
+        it( "returns posts", () => {
+            return posts.then( ( dat ) => {
+                dat.length.should.equal( 2 );
+            } );
+        } );
+
+        it( "executes query", () => {
+        	return posts.then( () => {
+	            seriateStub.execute.should.be.calledThrice();
+        	} );
         } );
     } );
 
@@ -110,7 +136,7 @@ describe( "sql", function() {
         } );
 
         beforeEach( () => {
-            posts = sql.getNewPosts( { categoryId: 2 }, Date.now() );
+            posts = sql.getNewPosts( { categoryId: 2, includeComments: false }, Date.now() );
         } );
 
         it( "returns null for posts", () => {
@@ -138,7 +164,9 @@ describe( "sql", function() {
         } );
 
         it( "executes query", () => {
-            seriateStub.execute.should.be.calledOnce();
+            return posts.then( () => {
+                seriateStub.execute.should.be.calledOnce();
+            } );
         } );
     } );
 
@@ -146,7 +174,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getDeletedPosts( { categoryId: 2 }, null );
+            posts = sql.getDeletedPosts( { categoryId: 2, includeComments: false }, null );
         } );
 
         it( "returns null for posts", () => {
@@ -154,7 +182,9 @@ describe( "sql", function() {
         } );
 
         it( "should not execute query", () => {
-            seriateStub.execute.should.not.be.called();
+            return posts.then( () => {
+                seriateStub.execute.should.not.be.called();
+            } );
         } );
     } );
 
@@ -170,7 +200,9 @@ describe( "sql", function() {
         } );
 
         it( "should not execute query", () => {
-            seriateStub.execute.should.not.be.called();
+            return posts.then( () => {
+                seriateStub.execute.should.not.be.called();
+            } );
         } );
     } );
 
