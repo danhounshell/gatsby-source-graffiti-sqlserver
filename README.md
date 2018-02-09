@@ -30,21 +30,31 @@
     			edges {
     				node {
     					id
+              ids
     					slug
-    					title
-    					publishedOn
-    					category
-    					createdBy
-    					tags
-    					content
-    					excerpt
-    					comments {
-          					id
-          					content
-          					publishedOn
-          					author
-          					authorUrl
-          				}
+              html
+              author {
+                name
+              }
+              comments {
+                id
+                html
+                date
+                author {
+                  name
+                  url
+                }
+                isTrackback
+              }
+              frontmatter {
+                title
+                date
+                description
+                tags
+                category
+                layout
+                draft
+              }
     				}
     			}
     		}
@@ -55,23 +65,33 @@ and
 
     graphql`
       query PostById($id: String!) {
-    	graffitiBlogPost( id: { eq: $id } ) {
-    		id
-    		title
-    		content
-    		createdBy
-    		category
-    		publishedOn
-    		excerpt
-    		tags
-    		slug
-    		comments {
-          		id
-          		content
-          		publishedOn
-          		author
-          		authorUrl
-          	}
-    	}
-    `
+        graffitiBlogPost( id: { eq: $id } ) {
+    		  id
+          ids
+          slug
+          html
+          author {
+            name
+          }
+    		  comments {
+            id
+            html
+            date
+            author {
+              name
+              url
+            }
+            isTrackback
+          }
+          frontmatter {
+            title
+            date
+            description
+            tags
+            category
+            layout
+            draft
+          }
+        }
+      }`
 

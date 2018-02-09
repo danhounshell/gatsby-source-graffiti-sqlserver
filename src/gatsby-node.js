@@ -10,6 +10,25 @@ const transformPostToNode = ( post, options ) => {
         mediaType: post.contentType,
         contentDigest: crypto.createHash( "md5" ).update( JSON.stringify( post ) ).digest( "hex" )
     }
+
+    if ( post.comments && post.comments.length > 0 ) {
+    	const oldComments = _.cloneDeep( post.comments );
+    	post.comments = [];
+    	_.each( oldComments, ( oldComment ) => {
+    		const newComment = {
+    			id: oldComment.id,
+    			date: oldComment.publishedOn,
+    			author: {
+    				name: oldComment.author,
+    				url: oldComment.authorUrl
+    			},
+    			html: oldComment.content,
+    			isTrackback: oldComment.isTrackback
+    		}
+    		post.comments.push( newComment );
+    	} );
+    }
+
     // Stringify date objects
     return JSON.parse(
         JSON.stringify( {
@@ -20,7 +39,7 @@ const transformPostToNode = ( post, options ) => {
 	        children: [],
 	        html: post.postBody,
 	        slug: _.kebabCase( post.slug ),
-	        createdBy: post.createdBy,
+	        author: { name: post.createdBy },
 	        comments: post.comments,
         	frontmatter: {
         		title: post.title,
