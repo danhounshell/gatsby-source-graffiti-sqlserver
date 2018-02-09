@@ -1,7 +1,7 @@
 require( "./helpers/setup" );
 
 describe( "gatsby-node", function() {
-    let gatsbyNode, sqlStub, sqlGetNewPosts, sqlGetDeletedPosts, pluginBoundActionCreators, pluginReporter, pluginStore;
+    let sqlStub, sqlGetNewPosts, sqlGetDeletedPosts, pluginBoundActionCreators, pluginReporter, pluginStore;
 
     let sqlShouldResolve = true;
     let thisPluginIsNull = false;
@@ -89,7 +89,7 @@ describe( "gatsby-node", function() {
             },
             pluginOptions
         ];
-        gatsbyNode = proxyquire( "../../src/gatsby-node.js", {
+        const gatsbyNode = proxyquire( "../../src/gatsby-node.js", {
             "./sql": sqlStub
         } );
         gatsbyNode.sourceNodes( ...inputArgs );
@@ -116,16 +116,16 @@ describe( "gatsby-node", function() {
 
         it( "should call createNode for each item returned from sql", () => {
             pluginBoundActionCreators.createNode.should.be.calledTwice();
-            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].title.should.equal( data[ 0 ].title );
-            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].title.should.equal( data[ 1 ].title );
+            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
+            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
         } );
 
         it( "should call deleteNode for each item returned from sql", () => {
             pluginBoundActionCreators.deleteNode.should.be.calledTwice();
             pluginBoundActionCreators.deleteNode.getCall( 0 ).args[ 0 ].should.equal( data[ 0 ].id );
-            pluginBoundActionCreators.deleteNode.getCall( 0 ).args[ 1 ].title.should.equal( data[ 0 ].title );
+            pluginBoundActionCreators.deleteNode.getCall( 0 ).args[ 1 ].frontmatter.title.should.equal( data[ 0 ].title );
             pluginBoundActionCreators.deleteNode.getCall( 1 ).args[ 0 ].should.equal( data[ 1 ].id );
-            pluginBoundActionCreators.deleteNode.getCall( 1 ).args[ 1 ].title.should.equal( data[ 1 ].title );
+            pluginBoundActionCreators.deleteNode.getCall( 1 ).args[ 1 ].frontmatter.title.should.equal( data[ 1 ].title );
         } );
 
         it( "should report the number of new nodes fetched and deleted", () => {
@@ -212,7 +212,7 @@ describe( "gatsby-node", function() {
 
         it( "should report the number of new nodes fetched and deleted", () => {
             pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 14 new nodes" );
+            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 15 new nodes" );
             pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
         } );
 

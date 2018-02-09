@@ -1,6 +1,6 @@
 {
   "name": "gatsby-source-graffiti-sqlserver",
-  "version": "0.0.2",
+  "version": "1.1.0",
   "description": "Gatsby plugin that pulls blog posts out of a Graffiti SQL Server database",
   "scripts": {
     "build": "babel src --out-dir . --ignore __tests__",

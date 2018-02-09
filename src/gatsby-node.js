@@ -5,7 +5,7 @@ const SQL = require( "./sql" );
 const staticData = require( "./static.json" );
 
 const transformPostToNode = ( post, options ) => {
-    let internal = {
+    const internal = {
         type: "GraffitiBlogPost",
         mediaType: post.contentType,
         contentDigest: crypto.createHash( "md5" ).update( JSON.stringify( post ) ).digest( "hex" )
@@ -13,20 +13,36 @@ const transformPostToNode = ( post, options ) => {
     // Stringify date objects
     return JSON.parse(
         JSON.stringify( {
-            id: post.id,
-            ids: [ post.id, "" ],
-            parent: null,
-            children: [],
-            internal,
-            title: post.title,
-            publishedOn: post.publishedOn,
-            slug: post.slug,
-            content: post.postBody,
-            excerpt: _.truncate( htmlToText.fromString( post.postBody, { ignoreHref: true, ignoreImage: true } ), { length: options.excerptLength, separator: " " } ),
-            tags: post.tags.split(","),
-            category: _.kebabCase( post.category ),
-            createdBy: post.createdBy,
-            comments: post.comments
+	        id: post.id,
+        	ids: [ post.id, "" ],
+        	internal,
+	        parent: null,
+	        children: [],
+	        html: post.postBody,
+	        slug: _.kebabCase( post.slug ),
+	        createdBy: post.createdBy,
+	        comments: post.comments,
+        	frontmatter: {
+        		title: post.title,
+	            date: post.publishedOn,
+	            description: _.truncate(
+	            	htmlToText.fromString(
+	            		post.postBody,
+	            		{
+	            			ignoreHref: true,
+	            			ignoreImage: true
+	            		}
+	            	),
+	            	{
+	            		length: options.excerptLength,
+	            		separator: " "
+	            	}
+	            ),
+				tags: post.tags.split(","),
+	            layout: ( post.category.trim().toLowerCase() === "uncategorized" ) ? "page" : "post",
+	            category: post.category,
+	            draft: false
+        	}
         } )
     );
 }
@@ -34,7 +50,8 @@ const transformPostToNode = ( post, options ) => {
 exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOptions ) => {
 	const defaultOptions = {
 		offlineMode: false,
-		excerptLength: 255,
+		includeComments: false,
+		excerptLength: 250,
 		sql: {},
 		query: {
 			categoryId: null,
@@ -92,4 +109,4 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
         // this has never been run before so there should be no existing nodes to delete
         reporter.info( "deleted 0 nodes" );
     }
-  };
+};
