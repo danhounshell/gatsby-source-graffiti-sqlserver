@@ -23,15 +23,16 @@
 ## Query:
 
     graphql(
-    	`{ allGraffitiBlogPost(
-    		sort:{ fields:publishedOn, order:DESC},
-    		filter:{ category:{ ne:\"\" } } ) {
-    			totalCount
-    			edges {
-    				node {
-    					id
+     `{ allGraffitiBlogPost(
+        sort:{ fields:publishedOn, order:DESC},
+        filter:{ category:{ ne:\"\" } } )
+        {
+          totalCount
+          edges {
+            node {
+              id
               ids
-    					slug
+              slug
               html
               author {
                 name
@@ -55,10 +56,10 @@
                 layout
                 draft
               }
-    				}
-    			}
-    		}
-    	}`
+            }
+          }
+        }
+      }`
     )
 
 and
@@ -66,14 +67,14 @@ and
     graphql`
       query PostById($id: String!) {
         graffitiBlogPost( id: { eq: $id } ) {
-    		  id
+          id
           ids
           slug
           html
           author {
             name
           }
-    		  comments {
+          comments {
             id
             html
             date
