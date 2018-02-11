@@ -3,31 +3,29 @@
 ## Configuration:
 
     {
-    	resolve: "gatsby-source-graffiti-sqlserver",
-      	options: {
-          sql: {
-            server: "databass server",
-            user: "username",
-            password: "password",
-            database: "my_databass"
-          },
-          replaceStrings: [
-            {
-              source: "some string to be globally replace",
-              value: "string to be used to replace the above"
-            },
-            {
-              source: "http://www.myoldblog.com/images/photos/somelongstring/",
-              value: "/files/"
-            }
-          ]
-          query: {
-            categoryId: null, // will only get posts from that category id when set
+      resolve: "gatsby-source-graffiti-sqlserver",
+      options: {
+        sql: {
+          server: "databass server",
+          user: "username",
+          password: "password",
+          database: "my_databass"
+        },
+        replaceStrings: [ {
+            source: "some string to be globally replace",
+            value: "string to be used to replace the above"
+          }, {
+            source: "http://www.myoldblog.com/images/photos/somelongstring/",
+            value: "/files/"
+          }
+        ],
+        query: {
+          categoryId: null, // will only get posts from that category id when set
             includeComments: false
           },
           offlineMode: false, // for testing when true will use static data instead of hitting your db
           excerptLength: 250
-      	}
+        }
     }
 
 ## Query:
