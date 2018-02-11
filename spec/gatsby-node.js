@@ -24,7 +24,7 @@ describe( "gatsby-node", function() {
          {
             id: "456",
             title: "second post",
-            postBody: "<b>I am a post body</b>",
+            postBody: "<b>I am a post body. <a href=\"http://deleteme.com/links/blog/images/someImage.jpg\">Some Link</a> <a href=\"http://deleteme2.com/links/blog/images/anotherImage.jpg\">Some Link</a></b>",
             contentType: "text/html",
             slug: "second-post",
             tags: "node,npm",
@@ -119,7 +119,9 @@ describe( "gatsby-node", function() {
             pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
             pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.cover.should.equal( "/photo.jpg" );
             pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
-            ( pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.cover === undefined ).should.be.true();
+            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.cover.should.equal( "" );
+            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
+			pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
         } );
 
         it( "should call deleteNode for each item returned from sql", () => {
@@ -138,6 +140,35 @@ describe( "gatsby-node", function() {
 
         it( "should call setPluginStatus twice", () => {
             pluginBoundActionCreators.setPluginStatus.should.be.calledTwice();
+        } );
+    } );
+
+    describe( "when executing sourceNodes and replacing strings", () => {
+        before( () => {
+            pluginOptions.replaceStrings = [
+            	{
+            		source: "http://deleteme.com/links/blog/",
+            		value: "/files/"
+            	},
+            	{
+            		source: "http://deleteme2.com/links/blog/",
+            		value: "/otherfiles/"
+            	}
+            ];
+        } );
+
+        after( () => {
+            pluginOptions.replaceStrings = null;
+        } );
+
+        it( "should replace selected text in html field of nodes created", () => {
+            pluginBoundActionCreators.createNode.should.be.calledTwice();
+            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
+            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
+            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
+			pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
+            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/files/images/someImage.jpg" );
+			pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/otherfiles/images/anotherImage.jpg" );
         } );
     } );
 

@@ -29,7 +29,14 @@ const transformPostToNode = ( post, options ) => {
     	} );
     }
 
-    let cover;
+	if ( options.replaceStrings ) {
+		_.each( options.replaceStrings, ( replaceString ) => {
+			const regex = new RegExp( replaceString.source, "g" );
+			post.postBody = post.postBody.replace( regex, replaceString.value );
+		} );
+	}
+
+    let cover = "";
 	const regex = /<img[^>]+src="?([^"\s]+)"?[^>]*\/>/g;
 	const regexResults = regex.exec( post.postBody );
 	if ( regexResults ) {
@@ -80,6 +87,7 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 		includeComments: false,
 		excerptLength: 250,
 		sql: {},
+		replaceStrings: [],
 		query: {
 			categoryId: null,
 			includeComments: false
