@@ -13,7 +13,7 @@ describe( "gatsby-node", function() {
         {
             id: "123",
             title: "first post",
-            postBody: "<b>I am a post body</b>",
+            postBody: "<b>I am a post <img src=\"/photo.jpg\" width=\"10\" alt=\"picture\" /> body</b>",
             contentType: "text/html",
             slug: "first-post",
             tags: "node,npm",
@@ -117,7 +117,9 @@ describe( "gatsby-node", function() {
         it( "should call createNode for each item returned from sql", () => {
             pluginBoundActionCreators.createNode.should.be.calledTwice();
             pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
+            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.cover.should.equal( "/photo.jpg" );
             pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
+            ( pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.cover === undefined ).should.be.true();
         } );
 
         it( "should call deleteNode for each item returned from sql", () => {

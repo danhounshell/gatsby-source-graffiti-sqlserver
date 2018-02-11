@@ -29,6 +29,13 @@ const transformPostToNode = ( post, options ) => {
     	} );
     }
 
+    let cover;
+	const regex = /<img[^>]+src="?([^"\s]+)"?[^>]*\/>/g;
+	const regexResults = regex.exec( post.postBody );
+	if ( regexResults ) {
+		cover = regexResults[ 1 ];
+	}
+
     // Stringify date objects
     return JSON.parse(
         JSON.stringify( {
@@ -60,6 +67,7 @@ const transformPostToNode = ( post, options ) => {
 				tags: post.tags.split(","),
 	            layout: ( post.category.trim().toLowerCase() === "uncategorized" ) ? "page" : "post",
 	            category: post.category,
+	            cover: cover,
 	            draft: false
         	}
         } )
