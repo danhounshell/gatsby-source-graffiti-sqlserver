@@ -5,12 +5,18 @@
     {
       resolve: "gatsby-source-graffiti-sqlserver",
       options: {
-        sql: {
+        dataSource: {
+          type: "sql",              // sql, json or static. static returns mock data (offline mode)
+          path: "./content/posts",  // path to json files
           server: "databass server",
           user: "username",
           password: "password",
           database: "my_databass"
         },
+        exportToJson: {             // when using sql if enabled will write posts to json format
+          enabled: false,           // at the specified path. basically for pulling data out of
+          path: "./content/posts"   // sql and into local file system. Example usage: export
+        }                           // posts to json and then switch data source to "json"
         replaceStrings: [ {
             source: "some string to be globally replace",
             value: "string to be used to replace the above"
@@ -20,12 +26,11 @@
           }
         ],
         query: {
-          categoryId: null, // will only get posts from that category id when set
-            includeComments: false
-          },
-          offlineMode: false, // for testing when true will use static data instead of hitting your db
-          excerptLength: 250
-        }
+          categoryId: null,         // will only get posts from that category id when set
+          includeComments: false
+        },
+        descriptionLength: 250
+      }
     }
 
 ## Query:

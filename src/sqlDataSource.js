@@ -3,7 +3,7 @@ const sql = require( "seriate" );
 
 let log;
 
-const getNewPosts = ( queryOptions, lastFetched ) => {
+const getNewPosts = ( { query: queryOptions }, lastFetched ) => {
     let query = "SELECT p.Id as postId, p.Title as title, p.PostBody as postBody, p.Published as publishedOn, p.Content_Type as contentType, p.Name as slug, p.Tag_List as tags, c.Name as category, p.CreatedBy as createdBy, p.UniqueId as id FROM graffiti_posts p INNER JOIN graffiti_Categories c ON p.CategoryId = c.Id WHERE p.IsPublished=1 AND p.IsDeleted=0 AND c.IsDeleted=0";
     if ( queryOptions && queryOptions.categoryId ) {
     	query += ` AND p.CategoryId = ${ queryOptions.categoryId }`;
@@ -34,7 +34,7 @@ const getCommentsForPost = ( postId ) => {
 	return executeQuery( query );
 };
 
-const getDeletedPosts = ( queryOptions, lastFetched ) => {
+const getDeletedPosts = ( { query: queryOptions }, lastFetched ) => {
     if ( lastFetched ) {
         let query = "SELECT p.Title as title, p.PostBody as postBody, p.Published as publishedOn, p.Content_Type as contentType, p.Name as slug, p.Tag_List as tags, c.Name as category, p.CreatedBy as createdBy, p.UniqueId as id FROM graffiti_posts p INNER JOIN graffiti_Categories c ON p.CategoryId = c.Id WHERE ( p.IsPublished=0 OR p.IsDeleted=1 OR c.IsDeleted=1 )";
         if ( queryOptions && queryOptions.categoryId ) {

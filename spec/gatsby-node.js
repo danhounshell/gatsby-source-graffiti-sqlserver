@@ -1,9 +1,13 @@
 require( "./helpers/setup" );
 
 describe( "gatsby-node", function() {
-    let sqlStub, sqlGetNewPosts, sqlGetDeletedPosts, pluginBoundActionCreators, pluginReporter, pluginStore;
+    let sqlStub, sqlGetNewPosts, sqlGetDeletedPosts,
+        jsonStub, jsonGetNewPosts, jsonGetDeletedPosts,
+        fsStub, fsWriteFileSyncStub,
+        pluginBoundActionCreators, pluginReporter, pluginStore;
 
     let sqlShouldResolve = true;
+    let jsonShouldResolve = true;
     let thisPluginIsNull = false;
     let thisPluginIsEmpty = false;
     let lastFetchedPosts = Date.now();
@@ -35,17 +39,22 @@ describe( "gatsby-node", function() {
     ];
 
     let pluginOptions = {
-        sql: {
+        dataSource: {
+        	"type": "",
             "server": "localhost",
             "user": "username",
             "password": "password",
-            "database": "databass"
+            "database": "databass",
+            "path": "./content/tests/"
         },
         query: {
             categoryId: 2
         },
-        offlineMode: false,
-        excerptLength: 200
+        descriptionLength: 200,
+        exportToJson: {
+        	enabled: false,
+        	path: "./content/tests/"
+        }
     };
 
     beforeEach( () => {
@@ -55,6 +64,16 @@ describe( "gatsby-node", function() {
             getNewPosts: sqlGetNewPosts,
             getDeletedPosts: sqlGetDeletedPosts
         } );
+        jsonGetNewPosts = jsonShouldResolve ? sinon.stub().resolves( data ) : sinon.stub().resolves( null );
+        jsonGetDeletedPosts = sinon.stub().resolves( null );
+        jsonStub = sinon.stub().returns( {
+        	getNewPosts: jsonGetNewPosts,
+        	getDeletedPosts: jsonGetDeletedPosts
+        } );
+        fsWriteFileSyncStub = sinon.stub();
+        fsStub = {
+        	writeFileSync: fsWriteFileSyncStub
+        };
         pluginBoundActionCreators = {
             createNode: sinon.stub(),
             deleteNode: sinon.stub(),
@@ -90,7 +109,9 @@ describe( "gatsby-node", function() {
             pluginOptions
         ];
         const gatsbyNode = proxyquire( "../../src/gatsby-node.js", {
-            "./sql": sqlStub
+            "./sqlDataSource": sqlStub,
+            "./jsonDataSource": jsonStub,
+            fs: fsStub
         } );
         gatsbyNode.sourceNodes( ...inputArgs );
     } );
@@ -99,302 +120,633 @@ describe( "gatsby-node", function() {
         sqlStub.reset();
         sqlGetNewPosts.reset();
         sqlGetDeletedPosts.reset();
+        jsonStub.reset();
+        jsonGetNewPosts.reset();
+        jsonGetDeletedPosts.reset();
         pluginBoundActionCreators.createNode.reset();
         pluginBoundActionCreators.deleteNode.reset();
         pluginBoundActionCreators.setPluginStatus.reset();
         pluginReporter.info.reset();
+        fsWriteFileSyncStub.reset();
     } );
 
-    describe( "when executing sourceNodes", () => {
-        it( "should set sql config", () => {
-            sqlStub.should.be.calledOnce();
-            sqlStub.getCall( 0 ).args[ 0 ].server.should.equal( pluginOptions.sql.server );
-            sqlStub.getCall( 0 ).args[ 0 ].user.should.equal( pluginOptions.sql.user );
-            sqlStub.getCall( 0 ).args[ 0 ].password.should.equal( pluginOptions.sql.password );
-            sqlStub.getCall( 0 ).args[ 0 ].database.should.equal( pluginOptions.sql.database );
-        } );
-
-        it( "should call createNode for each item returned from sql", () => {
-            pluginBoundActionCreators.createNode.should.be.calledTwice();
-            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
-            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.cover.should.equal( "/photo.jpg" );
-            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
-            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.cover.should.equal( "" );
-            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
-			pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
-        } );
-
-        it( "should call deleteNode for each item returned from sql", () => {
-            pluginBoundActionCreators.deleteNode.should.be.calledTwice();
-            pluginBoundActionCreators.deleteNode.getCall( 0 ).args[ 0 ].should.equal( data[ 0 ].id );
-            pluginBoundActionCreators.deleteNode.getCall( 0 ).args[ 1 ].frontmatter.title.should.equal( data[ 0 ].title );
-            pluginBoundActionCreators.deleteNode.getCall( 1 ).args[ 0 ].should.equal( data[ 1 ].id );
-            pluginBoundActionCreators.deleteNode.getCall( 1 ).args[ 1 ].frontmatter.title.should.equal( data[ 1 ].title );
-        } );
-
-        it( "should report the number of new nodes fetched and deleted", () => {
-            pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
-            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 2 nodes" );
-        } );
-
-        it( "should call setPluginStatus twice", () => {
-            pluginBoundActionCreators.setPluginStatus.should.be.calledTwice();
-        } );
-    } );
-
-    describe( "when executing sourceNodes and replacing strings", () => {
+    describe( "using static data source", () => {
         before( () => {
-            pluginOptions.replaceStrings = [
-            	{
-            		source: "http://deleteme.com/links/blog/",
-            		value: "/files/"
-            	},
-            	{
-            		source: "http://deleteme2.com/links/blog/",
-            		value: "/otherfiles/"
-            	}
-            ];
+            pluginOptions.dataSource.type = "static";
         } );
 
         after( () => {
-            pluginOptions.replaceStrings = null;
+            pluginOptions.dataSource.type = "";
         } );
 
-        it( "should replace selected text in html field of nodes created", () => {
-            pluginBoundActionCreators.createNode.should.be.calledTwice();
-            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
-            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
-            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
-			pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
-            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/files/images/someImage.jpg" );
-			pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/otherfiles/images/anotherImage.jpg" );
-        } );
+		describe( "when executing source nodes", () => {
+	        it( "should not query new posts", () => {
+	            sqlGetNewPosts.should.not.be.called();
+	        } );
+
+	        it( "should query deleted posts", () => {
+	            sqlGetDeletedPosts.should.not.be.called();
+	        } );
+
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 15 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should call setPluginStatus only once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+
+	        it( "should not export json", () => {
+	        	fsWriteFileSyncStub.should.not.be.called();
+	        } );
+	    } );
+
+	    describe( "when exportToJson is enabled", () => {
+	        before( () => {
+	            pluginOptions.exportToJson.enabled = true;
+	        } );
+
+	        after( () => {
+				pluginOptions.exportToJson.enabled = false;
+	        } );
+
+	        it( "should not export json", () => {
+	        	fsWriteFileSyncStub.should.not.be.called();
+	        } );
+	    } );
     } );
 
-    describe( "when sql works", () => {
-        it( "should query new posts", () => {
-            sqlGetNewPosts.should.be.calledOnce();
-        } );
-
-        it( "should query deleted posts", () => {
-            sqlGetDeletedPosts.should.be.calledOnce();
-        } );
-    } );
-
-    describe( "when sql errors", () => {
+    describe( "using json data source", () => {
         before( () => {
-            sqlShouldResolve = false;
+            pluginOptions.dataSource.type = "json";
         } );
 
         after( () => {
-            sqlShouldResolve = true;
+            pluginOptions.dataSource.type = "";
         } );
 
-        it( "should query new posts", () => {
-            sqlGetNewPosts.should.be.calledOnce();
-        } );
+	    describe( "when executing sourceNodes", () => {
+	        it( "should set json config", () => {
+	            jsonStub.should.be.calledOnce();
+	            jsonStub.getCall( 0 ).args[ 0 ].path.should.equal( pluginOptions.dataSource.path );
+	        } );
 
-        it( "should query deleted posts", () => {
-            sqlGetDeletedPosts.should.be.calledOnce();
-        } );
+	        it( "should call createNode for each item returned from json", () => {
+	            pluginBoundActionCreators.createNode.should.be.calledTwice();
+	            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.cover.should.equal( "/photo.jpg" );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.cover.should.equal( "" );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
+				pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
+	        } );
 
-        it( "should not call createNode", () => {
-            pluginBoundActionCreators.createNode.should.not.be.called();
-        } );
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
 
-        it( "should not call deleteNode", () => {
-            pluginBoundActionCreators.deleteNode.should.not.be.called();
-        } );
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
 
-        it( "should report the number of new nodes fetched and deleted", () => {
-            pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 0 new nodes" );
-            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
-        } );
+	        it( "should call setPluginStatus twice", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
 
-        it( "should call not call setPluginStatus twice", () => {
-            pluginBoundActionCreators.setPluginStatus.should.not.be.called();
-        } );
+	        it( "should not export json", () => {
+	        	fsWriteFileSyncStub.should.not.be.called();
+	        } );
+	    } );
+
+	    describe( "when executing sourceNodes and replacing strings", () => {
+	        before( () => {
+	            pluginOptions.replaceStrings = [
+	            	{
+	            		source: "http://deleteme.com/links/blog/",
+	            		value: "/files/"
+	            	},
+	            	{
+	            		source: "http://deleteme2.com/links/blog/",
+	            		value: "/otherfiles/"
+	            	}
+	            ];
+	        } );
+
+	        after( () => {
+	            pluginOptions.replaceStrings = [];
+	        } );
+
+	        it( "should replace selected text in html field of nodes created", () => {
+	            pluginBoundActionCreators.createNode.should.be.calledTwice();
+	            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
+				pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/files/images/someImage.jpg" );
+				pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/otherfiles/images/anotherImage.jpg" );
+	        } );
+	    } );
+
+	    describe( "when json works", () => {
+	        it( "should query new posts", () => {
+	            jsonGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should query deleted posts", () => {
+	            jsonGetDeletedPosts.should.be.calledOnce();
+	        } );
+	    } );
+
+	    describe( "when json errors", () => {
+	        before( () => {
+	            jsonShouldResolve = false;
+	        } );
+
+	        after( () => {
+	            jsonShouldResolve = true;
+	        } );
+
+	        it( "should query new posts", () => {
+	            jsonGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should query deleted posts", () => {
+	            jsonGetDeletedPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should not call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.not.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 0 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should not call setPluginStatus", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.not.be.called();
+	        } );
+	    } );
+
+	    describe( "when lastFetchedPosts is null", () => {
+	        before( () => {
+	            lastFetchedPosts = null;
+	        } );
+
+	        after( () => {
+	            lastFetchedPosts = Date.now();
+	        } );
+
+	        it( "should query new posts", () => {
+	            jsonGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should query deleted posts", () => {
+	            jsonGetDeletedPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should call setPluginStatus once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+	    } );
+
+	    describe( "when lastDeletedPosts is null", () => {
+	        before( () => {
+	            lastDeletedPosts = null;
+	        } );
+
+	        after( () => {
+	            lastDeletedPosts = Date.now();
+	        } );
+
+	        it( "should query new posts", () => {
+	            jsonGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should not query deleted posts", () => {
+	            jsonGetDeletedPosts.should.not.be.called();
+	        } );
+
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should call setPluginStatus once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+	    } );
+
+	    describe( "when store has no key for this plugin", () => {
+	        before( () => {
+	            thisPluginIsNull = true;
+	        } );
+
+	        after( () => {
+	            thisPluginIsNull = false;
+	        } );
+
+	        it( "should query new posts", () => {
+	            jsonGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should not query deleted posts", () => {
+	            jsonGetDeletedPosts.should.not.be.called();
+	        } );
+
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should call setPluginStatus once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+	    } );
+
+	    describe( "when store has key for this plugin but it is empty", () => {
+	        before( () => {
+	            thisPluginIsEmpty = true;
+	        } );
+
+	        after( () => {
+	            thisPluginIsEmpty = false;
+	        } );
+
+	        it( "should query new posts", () => {
+	            jsonGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should not query deleted posts", () => {
+	            jsonGetDeletedPosts.should.not.be.calledOnce();
+	        } );
+
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should call setPluginStatus once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+	    } );
+
+	    describe( "when exportToJson is enabled", () => {
+	        before( () => {
+	            pluginOptions.exportToJson.enabled = true;
+	        } );
+
+	        after( () => {
+				pluginOptions.exportToJson.enabled = false;
+	        } );
+
+	        it( "should not export json", () => {
+	        	fsWriteFileSyncStub.should.not.be.called();
+	        } );
+	    } );
     } );
 
-    describe( "when using offlineMode", () => {
+    describe( "using sql data source", () => {
         before( () => {
-            pluginOptions.offlineMode = true;
+            pluginOptions.dataSource.type = "sql";
+            pluginOptions.replaceStrings = [];
         } );
 
         after( () => {
-            pluginOptions.offlineMode = false;
+            pluginOptions.dataSource.type = "";
         } );
 
-        it( "should not query new posts", () => {
-            sqlGetNewPosts.should.not.be.called();
-        } );
+	    describe( "when executing sourceNodes", () => {
+	        it( "should set sql config", () => {
+	            sqlStub.should.be.calledOnce();
+	            sqlStub.getCall( 0 ).args[ 0 ].server.should.equal( pluginOptions.dataSource.server );
+	            sqlStub.getCall( 0 ).args[ 0 ].user.should.equal( pluginOptions.dataSource.user );
+	            sqlStub.getCall( 0 ).args[ 0 ].password.should.equal( pluginOptions.dataSource.password );
+	            sqlStub.getCall( 0 ).args[ 0 ].database.should.equal( pluginOptions.dataSource.database );
+	        } );
 
-        it( "should query deleted posts", () => {
-            sqlGetDeletedPosts.should.not.be.called();
-        } );
+	        it( "should call createNode for each item returned from sql", () => {
+	            pluginBoundActionCreators.createNode.should.be.calledTwice();
+	            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.cover.should.equal( "/photo.jpg" );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.cover.should.equal( "" );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
+				pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
+	        } );
 
-        it( "should call createNode", () => {
-            pluginBoundActionCreators.createNode.should.be.called();
-        } );
+	        it( "should call deleteNode for each item returned from sql", () => {
+	            pluginBoundActionCreators.deleteNode.should.be.calledTwice();
+	            pluginBoundActionCreators.deleteNode.getCall( 0 ).args[ 0 ].should.equal( data[ 0 ].id );
+	            pluginBoundActionCreators.deleteNode.getCall( 0 ).args[ 1 ].frontmatter.title.should.equal( data[ 0 ].title );
+	            pluginBoundActionCreators.deleteNode.getCall( 1 ).args[ 0 ].should.equal( data[ 1 ].id );
+	            pluginBoundActionCreators.deleteNode.getCall( 1 ).args[ 1 ].frontmatter.title.should.equal( data[ 1 ].title );
+	        } );
 
-        it( "should not call deleteNode", () => {
-            pluginBoundActionCreators.deleteNode.should.not.be.called();
-        } );
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 2 nodes" );
+	        } );
 
-        it( "should report the number of new nodes fetched and deleted", () => {
-            pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 15 new nodes" );
-            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
-        } );
+	        it( "should call setPluginStatus twice", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledTwice();
+	        } );
 
-        it( "should call setPluginStatus only once", () => {
-            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
-        } );
-    } );
+	        it( "should not export json", () => {
+	        	fsWriteFileSyncStub.should.not.be.called();
+	        } );
+	    } );
 
-    describe( "when lastFetchedPosts is null", () => {
-        before( () => {
-            lastFetchedPosts = null;
-        } );
+	    describe( "when executing sourceNodes and replacing strings", () => {
+	        before( () => {
+	            pluginOptions.replaceStrings = [
+	            	{
+	            		source: "http://deleteme.com/links/blog/",
+	            		value: "/files/"
+	            	},
+	            	{
+	            		source: "http://deleteme2.com/links/blog/",
+	            		value: "/otherfiles/"
+	            	}
+	            ];
+	        } );
 
-        after( () => {
-            lastFetchedPosts = Date.now();
-        } );
+	        after( () => {
+	            pluginOptions.replaceStrings = null;
+	        } );
 
-        it( "should query new posts", () => {
-            sqlGetNewPosts.should.be.calledOnce();
-        } );
+	        it( "should replace selected text in html field of nodes created", () => {
+	            pluginBoundActionCreators.createNode.should.be.calledTwice();
+	            pluginBoundActionCreators.createNode.getCall( 0 ).args[ 0 ].frontmatter.title.should.equal( data[ 0 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].frontmatter.title.should.equal( data[ 1 ].title );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme.com/links/blog/images/someImage.jpg" );
+				pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.not.contain( "http://deleteme2.com/links/blog/images/anotherImage.jpg" );
+	            pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/files/images/someImage.jpg" );
+				pluginBoundActionCreators.createNode.getCall( 1 ).args[ 0 ].html.should.contain( "/otherfiles/images/anotherImage.jpg" );
+	        } );
+	    } );
 
-        it( "should query deleted posts", () => {
-            sqlGetDeletedPosts.should.be.calledOnce();
-        } );
+	    describe( "when sql works", () => {
+	        it( "should query new posts", () => {
+	            sqlGetNewPosts.should.be.calledOnce();
+	        } );
 
-        it( "should call createNode", () => {
-            pluginBoundActionCreators.createNode.should.be.called();
-        } );
+	        it( "should query deleted posts", () => {
+	            sqlGetDeletedPosts.should.be.calledOnce();
+	        } );
+	    } );
 
-        it( "should call deleteNode", () => {
-            pluginBoundActionCreators.deleteNode.should.be.called();
-        } );
+	    describe( "when sql errors", () => {
+	        before( () => {
+	            sqlShouldResolve = false;
+	        } );
 
-        it( "should report the number of new nodes fetched and deleted", () => {
-            pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
-            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 2 nodes" );
-        } );
+	        after( () => {
+	            sqlShouldResolve = true;
+	        } );
 
-        it( "should call setPluginStatus twice", () => {
-            pluginBoundActionCreators.setPluginStatus.should.be.calledTwice();
-        } );
-    } );
+	        it( "should query new posts", () => {
+	            sqlGetNewPosts.should.be.calledOnce();
+	        } );
 
-    describe( "when lastDeletedPosts is null", () => {
-        before( () => {
-            lastDeletedPosts = null;
-        } );
+	        it( "should query deleted posts", () => {
+	            sqlGetDeletedPosts.should.be.calledOnce();
+	        } );
 
-        after( () => {
-            lastDeletedPosts = Date.now();
-        } );
+	        it( "should not call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.not.be.called();
+	        } );
 
-        it( "should query new posts", () => {
-            sqlGetNewPosts.should.be.calledOnce();
-        } );
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
 
-        it( "should not query deleted posts", () => {
-            sqlGetDeletedPosts.should.not.be.called();
-        } );
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 0 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
 
-        it( "should call createNode", () => {
-            pluginBoundActionCreators.createNode.should.be.called();
-        } );
+	        it( "should call not call setPluginStatus twice", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.not.be.called();
+	        } );
+	    } );
 
-        it( "should not call deleteNode", () => {
-            pluginBoundActionCreators.deleteNode.should.not.be.called();
-        } );
+	    describe( "when lastFetchedPosts is null", () => {
+	        before( () => {
+	            lastFetchedPosts = null;
+	        } );
 
-        it( "should report the number of new nodes fetched and deleted", () => {
-            pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
-            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
-        } );
+	        after( () => {
+	            lastFetchedPosts = Date.now();
+	        } );
 
-        it( "should call setPluginStatus once", () => {
-            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
-        } );
-    } );
+	        it( "should query new posts", () => {
+	            sqlGetNewPosts.should.be.calledOnce();
+	        } );
 
-    describe( "when store has no key for this plugin", () => {
-        before( () => {
-            thisPluginIsNull = true;
-        } );
+	        it( "should query deleted posts", () => {
+	            sqlGetDeletedPosts.should.be.calledOnce();
+	        } );
 
-        after( () => {
-            thisPluginIsNull = false;
-        } );
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
 
-        it( "should query new posts", () => {
-            sqlGetNewPosts.should.be.calledOnce();
-        } );
+	        it( "should call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.be.called();
+	        } );
 
-        it( "should not query deleted posts", () => {
-            sqlGetDeletedPosts.should.not.be.called();
-        } );
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 2 nodes" );
+	        } );
 
-        it( "should call createNode", () => {
-            pluginBoundActionCreators.createNode.should.be.called();
-        } );
+	        it( "should call setPluginStatus twice", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledTwice();
+	        } );
+	    } );
 
-        it( "should not call deleteNode", () => {
-            pluginBoundActionCreators.deleteNode.should.not.be.called();
-        } );
+	    describe( "when lastDeletedPosts is null", () => {
+	        before( () => {
+	            lastDeletedPosts = null;
+	        } );
 
-        it( "should report the number of new nodes fetched and deleted", () => {
-            pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
-            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
-        } );
+	        after( () => {
+	            lastDeletedPosts = Date.now();
+	        } );
 
-        it( "should call setPluginStatus once", () => {
-            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
-        } );
-    } );
+	        it( "should query new posts", () => {
+	            sqlGetNewPosts.should.be.calledOnce();
+	        } );
 
-    describe( "when store has key for this plugin but it is empty", () => {
-        before( () => {
-            thisPluginIsEmpty = true;
-        } );
+	        it( "should not query deleted posts", () => {
+	            sqlGetDeletedPosts.should.not.be.called();
+	        } );
 
-        after( () => {
-            thisPluginIsEmpty = false;
-        } );
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
 
-        it( "should query new posts", () => {
-            sqlGetNewPosts.should.be.calledOnce();
-        } );
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
 
-        it( "should not query deleted posts", () => {
-            sqlGetDeletedPosts.should.not.be.calledOnce();
-        } );
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
 
-        it( "should call createNode", () => {
-            pluginBoundActionCreators.createNode.should.be.called();
-        } );
+	        it( "should call setPluginStatus once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+	    } );
 
-        it( "should not call deleteNode", () => {
-            pluginBoundActionCreators.deleteNode.should.not.be.called();
-        } );
+	    describe( "when store has no key for this plugin", () => {
+	        before( () => {
+	            thisPluginIsNull = true;
+	        } );
 
-        it( "should report the number of new nodes fetched and deleted", () => {
-            pluginReporter.info.should.be.calledTwice();
-            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
-            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
-        } );
+	        after( () => {
+	            thisPluginIsNull = false;
+	        } );
 
-        it( "should call setPluginStatus once", () => {
-            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
-        } );
-    } );
+	        it( "should query new posts", () => {
+	            sqlGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should not query deleted posts", () => {
+	            sqlGetDeletedPosts.should.not.be.called();
+	        } );
+
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should call setPluginStatus once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+	    } );
+
+	    describe( "when store has key for this plugin but it is empty", () => {
+	        before( () => {
+	            thisPluginIsEmpty = true;
+	        } );
+
+	        after( () => {
+	            thisPluginIsEmpty = false;
+	        } );
+
+	        it( "should query new posts", () => {
+	            sqlGetNewPosts.should.be.calledOnce();
+	        } );
+
+	        it( "should not query deleted posts", () => {
+	            sqlGetDeletedPosts.should.not.be.calledOnce();
+	        } );
+
+	        it( "should call createNode", () => {
+	            pluginBoundActionCreators.createNode.should.be.called();
+	        } );
+
+	        it( "should not call deleteNode", () => {
+	            pluginBoundActionCreators.deleteNode.should.not.be.called();
+	        } );
+
+	        it( "should report the number of new nodes fetched and deleted", () => {
+	            pluginReporter.info.should.be.calledTwice();
+	            pluginReporter.info.getCall( 0 ).args[ 0 ].should.equal( "fetched 2 new nodes" );
+	            pluginReporter.info.getCall( 1 ).args[ 0 ].should.equal( "deleted 0 nodes" );
+	        } );
+
+	        it( "should call setPluginStatus once", () => {
+	            pluginBoundActionCreators.setPluginStatus.should.be.calledOnce();
+	        } );
+	    } );
+
+	    describe( "when exportToJson is enabled", () => {
+	        before( () => {
+	            pluginOptions.exportToJson.enabled = true;
+	        } );
+
+	        after( () => {
+				pluginOptions.exportToJson.enabled = false;
+	        } );
+
+	        it( "should export json", () => {
+	        	fsWriteFileSyncStub.should.be.calledTwice();
+	        } );
+	    } );
+	} );
 } );

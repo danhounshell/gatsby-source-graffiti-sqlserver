@@ -1,8 +1,22 @@
 const _ = require( "lodash" );
 const crypto = require( "crypto" );
+const fs = require("fs");
 const htmlToText = require( "html-to-text" );
-const SQL = require( "./sql" );
-const staticData = require( "./static.json" );
+const path = require( "path" );
+const SQL = require( "./sqlDataSource" );
+const json = require( "./jsonDataSource" );
+const staticData = require( "./staticDataSource.json" );
+
+const writeNodeToJson = ( post, options ) => {
+	if ( options.dataSource.type === "sql" && options.exportToJson && options.exportToJson.enabled && options.exportToJson.path ) {
+		const postDate = new Date( post.publishedOn );
+		const fileTitle = postDate.getFullYear() + "-" + ( "0" + ( postDate.getMonth() + 1 ) ).slice( -2 ) + "-" + ( "0" + postDate.getDate() ).slice( -2 ) + "-" + _.kebabCase( post.slug ) + ".json";
+		const filePath = path.join( options.exportToJson.path, `/${ fileTitle }` );
+		fs.writeFileSync( filePath, JSON.stringify( post, null, 4 ), "utf8" )
+	}
+};
+
+// remove json file
 
 const transformPostToNode = ( post, options ) => {
     const internal = {
@@ -29,65 +43,75 @@ const transformPostToNode = ( post, options ) => {
     	} );
     }
 
+    let newPostBody = post.postBody;
 	if ( options.replaceStrings ) {
 		_.each( options.replaceStrings, ( replaceString ) => {
 			const regex = new RegExp( replaceString.source, "g" );
-			post.postBody = post.postBody.replace( regex, replaceString.value );
+			newPostBody = newPostBody.replace( regex, replaceString.value );
 		} );
 	}
 
     let cover = "";
 	const regex = /<img[^>]+src="?([^"\s]+)"?[^>]*\/>/g;
-	const regexResults = regex.exec( post.postBody );
+	const regexResults = regex.exec( newPostBody );
 	if ( regexResults ) {
 		cover = regexResults[ 1 ];
 	}
 
+	const node = {
+        id: post.id,
+    	ids: [ post.id, "" ],
+    	internal,
+        parent: null,
+        children: [],
+        html: newPostBody,
+        slug: _.kebabCase( post.slug ),
+        author: { name: post.createdBy },
+        comments: post.comments,
+    	frontmatter: {
+    		title: post.title,
+            date: post.publishedOn,
+            description: _.truncate(
+            	htmlToText.fromString(
+            		newPostBody,
+            		{
+            			ignoreHref: true,
+            			ignoreImage: true
+            		}
+            	),
+            	{
+            		length: options.descriptionLength,
+            		separator: " "
+            	}
+            ),
+			tags: post.tags.split(","),
+            layout: ( post.category.trim().toLowerCase() === "uncategorized" ) ? "page" : "post",
+            category: post.category,
+            cover: cover,
+            draft: false
+    	}
+    }
+
     // Stringify date objects
-    return JSON.parse(
-        JSON.stringify( {
-	        id: post.id,
-        	ids: [ post.id, "" ],
-        	internal,
-	        parent: null,
-	        children: [],
-	        html: post.postBody,
-	        slug: _.kebabCase( post.slug ),
-	        author: { name: post.createdBy },
-	        comments: post.comments,
-        	frontmatter: {
-        		title: post.title,
-	            date: post.publishedOn,
-	            description: _.truncate(
-	            	htmlToText.fromString(
-	            		post.postBody,
-	            		{
-	            			ignoreHref: true,
-	            			ignoreImage: true
-	            		}
-	            	),
-	            	{
-	            		length: options.excerptLength,
-	            		separator: " "
-	            	}
-	            ),
-				tags: post.tags.split(","),
-	            layout: ( post.category.trim().toLowerCase() === "uncategorized" ) ? "page" : "post",
-	            category: post.category,
-	            cover: cover,
-	            draft: false
-        	}
-        } )
-    );
+    return JSON.parse( JSON.stringify( node ) );
 }
 
 exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOptions ) => {
 	const defaultOptions = {
-		offlineMode: false,
-		includeComments: false,
-		excerptLength: 250,
-		sql: {},
+		dataSource: {
+			type: "static",
+			path: "",
+			server: "",
+			user: "",
+			password: "",
+			database: ""
+		},
+		descriptionLength: 250,
 		replaceStrings: [],
+		exportToJson: {
+			enabled: false,
+			path: ""
+		},
 		query: {
 			categoryId: null,
 			includeComments: false
@@ -96,9 +120,10 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
     const { createNode, deleteNode, setPluginStatus } = boundActionCreators;
     const options = _.merge( defaultOptions, pluginOptions );
 
-    const sql = ( options.offlineMode ) ?
+    const dataSource = ( options.dataSource.type === "static" ) ?
     	null :
-    	SQL( options.sql, reporter );
+    	( options.dataSource.type === "sql" ) ? SQL( options.dataSource, reporter ) :
+    	json( options.dataSource, reporter );
 
     let lastFetchedPosts, lastDeletedPosts;
     if ( store && store.getState() && store.getState().status && store.getState().status.plugins &&
@@ -112,11 +137,12 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
     }
 
     // get only posts modified since last check
-    let newPosts = ( options.offlineMode ) ?
-    	staticData :
-    	await sql.getNewPosts( options.query, lastFetchedPosts );
+    let newPosts = ( dataSource ) ?
+    	await dataSource.getNewPosts( options, lastFetchedPosts ) :
+    	staticData;
     if ( newPosts && newPosts.length > 0 ) {
         newPosts.forEach( post => {
+			writeNodeToJson( post, options );
             createNode( transformPostToNode( post, options ) );
         } );
         reporter.info( `fetched ${ newPosts.length } new nodes`)
@@ -127,9 +153,9 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 
     // delete any nodes where post has been deleted since last check
     if ( lastDeletedPosts ) {
-        let deletedPosts = ( options.offlineMode ) ?
-       		null :
-       		await sql.getDeletedPosts( options.query, lastDeletedPosts );
+        let deletedPosts = ( dataSource ) ?
+       		await dataSource.getDeletedPosts( options, lastDeletedPosts ) :
+       		null;
         if ( deletedPosts && deletedPosts.length > 0 ) {
             deletedPosts.forEach( post => {
                 let node = transformPostToNode( post, options );

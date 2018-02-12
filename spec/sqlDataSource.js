@@ -1,16 +1,15 @@
 require( "./helpers/setup" );
-const static = require( "../src/static.json" );
 
-describe( "sql", function() {
+describe( "sqlDataSource", function() {
     let sql, seriateStub, logStub;
 
     let sqlShouldResolve = true;
 
     const config = {
-        "server": "localhost",
-        "user": "username",
-        "password": "password",
-        "database": "databass"
+        server: "localhost",
+        user: "username",
+        password: "password",
+        database: "databass"
     };
 
     const data = [
@@ -48,7 +47,7 @@ describe( "sql", function() {
             setDefaultConfig: sinon.stub(),
             execute: ( sqlShouldResolve ) ? sinon.stub().resolves( data ) : sinon.stub().rejects( "An error occured" )
         };
-        const Sql = proxyquire( "../../src/sql.js", {
+        const Sql = proxyquire( "../../src/sqlDataSource.js", {
             seriate: seriateStub
         } );
         sql = Sql( config, logStub );
@@ -70,7 +69,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getNewPosts( { categoryId: 2, includeComments: false }, Date.now() );
+            posts = sql.getNewPosts( { query: { categoryId: 2, includeComments: false } }, Date.now() );
         } );
 
         it( "returns posts", () => {
@@ -90,7 +89,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getNewPosts({ categoryId: null, includeComments: false });
+            posts = sql.getNewPosts( { query: { categoryId: null, includeComments: false } } );
         } );
 
         it( "returns posts", () => {
@@ -110,7 +109,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getNewPosts( { categoryId: 2, includeComments: true }, Date.now() );
+            posts = sql.getNewPosts( { query: { categoryId: 2, includeComments: true } }, Date.now() );
         } );
 
         it( "returns posts", () => {
@@ -136,7 +135,7 @@ describe( "sql", function() {
         } );
 
         beforeEach( () => {
-            posts = sql.getNewPosts( { categoryId: 2, includeComments: false }, Date.now() );
+            posts = sql.getNewPosts( { query: { categoryId: 2, includeComments: false } }, Date.now() );
         } );
 
         it( "returns null for posts", () => {
@@ -154,7 +153,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getDeletedPosts( null, Date.now() );
+            posts = sql.getDeletedPosts( { query: {} }, Date.now() );
         } );
 
         it( "returns posts", () => {
@@ -174,7 +173,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getDeletedPosts( { categoryId: 2, includeComments: false }, null );
+            posts = sql.getDeletedPosts( { query: { categoryId: 2, includeComments: false } }, null );
         } );
 
         it( "returns null for posts", () => {
@@ -192,7 +191,7 @@ describe( "sql", function() {
         let posts;
 
         beforeEach( () => {
-            posts = sql.getDeletedPosts();
+            posts = sql.getDeletedPosts( { query: {} } );
         } );
 
         it( "returns null for posts", () => {
@@ -216,7 +215,7 @@ describe( "sql", function() {
         } );
 
         beforeEach( () => {
-            posts = sql.getDeletedPosts( { categoryId: 2 }, Date.now() );
+            posts = sql.getDeletedPosts( { query: { categoryId: 2 } }, Date.now() );
         } );
 
         it( "returns null for posts", () => {
