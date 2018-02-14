@@ -15,8 +15,9 @@
         },
         exportToJson: {             // when using sql if enabled will write posts to json format
           enabled: false,           // at the specified path. basically for pulling data out of
-          path: "./content/posts"   // sql and into local file system. Example usage: export
-        }                           // posts to json and then switch data source to "json"
+          path: "./content/posts"   // sql and into local file system. default for overwrite is false
+          overwriteExisting: false  // Example usage: export posts to json and then switch data source
+        }                           // to "json" so that all your posts are on filesystem and in source control
         replaceStrings: [ {
             source: "some string to be globally replace",
             value: "string to be used to replace the above"
