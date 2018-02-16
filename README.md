@@ -45,7 +45,6 @@
           edges {
             node {
               id
-              ids
               slug
               html
               author {
@@ -83,7 +82,6 @@ and
       query PostById($id: String!) {
         graffitiBlogPost( id: { eq: $id } ) {
           id
-          ids
           slug
           html
           author {
