@@ -107,7 +107,7 @@ describe( "gatsby-node", function() {
         const gatsbyNode = proxyquire( "../../src/gatsby-node.js", {
             "./sqlDataSource": sqlStub,
             "./jsonDataSource": jsonStub,
-            "./exports/postToJson": exportToJsonStub
+            "./exportPostToJson": exportToJsonStub
         } );
         gatsbyNode.sourceNodes( ...inputArgs );
     } );

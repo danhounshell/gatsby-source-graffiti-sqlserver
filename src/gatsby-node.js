@@ -1,6 +1,6 @@
 const _ = require( "lodash" );
 const transformPostToNode = require( "./transformPostToNode" );
-const exportToJson = require( "./exports/postToJson" );
+const exportToJson = require( "./exportPostToJson" );
 const SQL = require( "./sqlDataSource" );
 const json = require( "./jsonDataSource" );
 const staticData = require( "./staticDataSource.json" );

@@ -6,10 +6,8 @@ describe( "exports", function() {
 
 		let fileAlreadyExists = false;
 		let options = {
-			exportToJson: {
-				enabled: false,
-				path: "./content/tests/"
-			}
+			enabled: false,
+			path: "./content/tests/"
 		};
 
 		beforeEach( () => {
@@ -19,7 +17,7 @@ describe( "exports", function() {
         		writeFileSync: fsWriteFileSyncStub,
         		existsSync: fsExistsSyncStub
         	};
-	        postToJson = proxyquire( "../../src/exports/postToJson.js", {
+	        postToJson = proxyquire( "../../src/exportPostToJson.js", {
 	            fs: fsStub
 	        } );
 	        postToJson( { id: 1, postDate: "2017-08-04 05:58:02.563" }, options );
@@ -38,12 +36,12 @@ describe( "exports", function() {
         describe( "when json file already exists and overwrite is enabled", () => {
         	before( () => {
         		fileAlreadyExists = true;
-        		options.exportToJson.overwriteExisting = true;
+        		options.overwriteExisting = true;
         	} );
 
         	after( () => {
         		fileAlreadyExists = false;
-        		options.exportToJson.overwriteExisting = null;
+        		options.overwriteExisting = null;
         	} );
 
 	        it( "should export json", () => {
@@ -68,12 +66,12 @@ describe( "exports", function() {
         describe( "when json file already exists and overwrite is disabled", () => {
         	before( () => {
         		fileAlreadyExists = true;
-        		options.exportToJson.overwriteExisting = false;
+        		options.overwriteExisting = false;
         	} );
 
         	after( () => {
         		fileAlreadyExists = false;
-				options.exportToJson.overwriteExisting = null;
+				options.overwriteExisting = null;
         	} );
 
 	        it( "should export json", () => {
