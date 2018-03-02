@@ -58,7 +58,7 @@ describe( "exports", function() {
         		fileAlreadyExists = false;
         	} );
 
-	        it( "should export json", () => {
+	        it( "should not export json", () => {
 	        	fsWriteFileSyncStub.should.not.be.called();
 	        } );
         } );
@@ -74,7 +74,7 @@ describe( "exports", function() {
 				options.overwriteExisting = null;
         	} );
 
-	        it( "should export json", () => {
+	        it( "should not export json", () => {
 	        	fsWriteFileSyncStub.should.not.be.called();
 	        } );
         } );

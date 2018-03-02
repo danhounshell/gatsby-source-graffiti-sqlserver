@@ -1,15 +1,26 @@
 const _ = require( "lodash" );
 const transformPostToNode = require( "./transformPostToNode" );
 const exportToJson = require( "./exportPostToJson" );
+const exportToMarkdown = require( "./exportNodeToMarkdown" );
 const SQL = require( "./sqlDataSource" );
 const json = require( "./jsonDataSource" );
 const staticData = require( "./staticDataSource.json" );
 
 const writePostToJson = ( post, options ) => {
 	if ( options.dataSource.type === "sql" && options.exportToJson && options.exportToJson.enabled && options.exportToJson.path ) {
-		exportToJson( post, options );
+		exportToJson( post, options.exportToJson );
 	}
 }
+
+const writeNodeToMarkdown = (node, options) => {
+	if ( (options.dataSource.type === "sql"  || options.dataSource.type === "json" )
+		&& options.exportToMarkdown
+		&& options.exportToMarkdown.enabled
+		&& options.exportToMarkdown.path) {
+
+		exportToMarkdown(node, options.exportToMarkdown );
+	}
+};
 
 exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOptions ) => {
 	const defaultOptions = {
@@ -24,6 +35,11 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 		descriptionLength: 250,
 		replaceStrings: [],
 		exportToJson: {
+			enabled: false,
+			path: "",
+			overwriteExisting: false
+		},
+		exportToMarkdown: {
 			enabled: false,
 			path: "",
 			overwriteExisting: false
@@ -59,7 +75,9 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 	if ( newPosts && newPosts.length > 0 ) {
 		newPosts.forEach( post => {
 			writePostToJson( post, options );
-			createNode( transformPostToNode( post, options ) );
+			let node = transformPostToNode( post, options );
+			writeNodeToMarkdown( node, options );
+			createNode( node );
 		} );
 		reporter.info( `fetched ${ newPosts.length } new nodes`)
 		setPluginStatus( { lastFetchedPosts: Date.now() } );
@@ -74,8 +92,9 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 			null;
 		if ( deletedPosts && deletedPosts.length > 0 ) {
 			deletedPosts.forEach( post => {
-				// remove json file
+				// TODO: remove json file
 				let node = transformPostToNode( post, options );
+				// TODO: remove markdown file
 				deleteNode( node.id, node );
 			} );
 			reporter.info( `deleted ${ deletedPosts.length } nodes`)

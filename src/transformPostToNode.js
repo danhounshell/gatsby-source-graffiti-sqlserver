@@ -35,11 +35,15 @@ module.exports = ( post, options ) => {
 		} );
 	}
 
+	let images = [];
 	let cover = "";
 	const regex = /<img[^>]+src="?([^"\s]+)"?[^>]*\/>/g;
-	const regexResults = regex.exec( newPostBody );
-	if ( regexResults ) {
-		cover = regexResults[ 1 ];
+	let match;
+	while (( match = regex.exec( newPostBody )) != null ){
+		images.push( match[ 1 ] );
+	}
+	if ( images.length > 0 ) {
+		cover = images[ 0 ];
 	}
 
 	const node = {
@@ -49,27 +53,31 @@ module.exports = ( post, options ) => {
 		children: [],
 		html: newPostBody,
 		slug: _.kebabCase( post.slug ),
-		author: { name: post.createdBy },
 		comments: post.comments,
 		frontmatter: {
 			title: post.title,
+			author: { name: post.createdBy },
 			date: post.publishedOn,
 			description: _.truncate(
 				htmlToText.fromString(
 					newPostBody,
 					{
 						ignoreHref: true,
-						ignoreImage: true
+						ignoreImage: true,
+						wordwrap: false,
+						uppercaseHeadings: false,
+						singleNewLineParagraphs: true
 					}
 				),
 				{
 					length: options.descriptionLength,
 					separator: " "
 				}
-			),
+			).replace( /\\n/g, " " ),
 			tags: post.tags.split(","),
 			layout: ( post.category.trim().toLowerCase() === "uncategorized" ) ? "page" : "post",
 			category: post.category,
+			images: images,
 			cover: cover,
 			draft: false
 		}

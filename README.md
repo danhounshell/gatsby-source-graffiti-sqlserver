@@ -15,9 +15,14 @@
         },
         exportToJson: {             // when using sql if enabled will write posts to json format
           enabled: false,           // at the specified path. basically for pulling data out of
-          path: "./content/posts"   // sql and into local file system. default for overwrite is false
+          path: "./content/posts/"  // sql and into local file system. default for overwrite is false
           overwriteExisting: false  // Example usage: export posts to json and then switch data source
-        }                           // to "json" so that all your posts are on filesystem and in source control
+        },                          // to "json" so that all posts are on filesystem and in source control
+        exportToMarkdown: {
+          enabled: false,           // when using sql or json if enabled will convert posts to markdown
+          path: "./content/md/",    // format at the specified path. basically for pulling data out of
+          overwriteExisting: false  // sql and into local file system. default for overwrite is false
+        },
         replaceStrings: [ {
             source: "some string to be globally replace",
             value: "string to be used to replace the above"
@@ -47,9 +52,6 @@
               id
               slug
               html
-              author {
-                name
-              }
               comments {
                 id
                 html
@@ -64,6 +66,9 @@
                 title
                 date
                 description
+                author {
+                  name
+                }
                 tags
                 category
                 layout
@@ -84,9 +89,6 @@ and
           id
           slug
           html
-          author {
-            name
-          }
           comments {
             id
             html
@@ -100,6 +102,9 @@ and
           frontmatter {
             title
             date
+            author {
+              name
+            }
             description
             tags
             category
