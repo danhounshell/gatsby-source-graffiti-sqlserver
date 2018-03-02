@@ -2,7 +2,8 @@ require( "./helpers/setup" );
 
 describe( "gatsby-node", function() {
     let sqlStub, sqlGetNewPosts, sqlGetDeletedPosts,
-        jsonStub, jsonGetNewPosts, jsonGetDeletedPosts, exportToJsonStub,
+        jsonStub, jsonGetNewPosts, jsonGetDeletedPosts,
+        exportToJsonStub, exportToMarkdownStub,
         pluginBoundActionCreators, pluginReporter, pluginStore;
 
     let sqlShouldResolve = true;
@@ -53,6 +54,10 @@ describe( "gatsby-node", function() {
         exportToJson: {
         	enabled: false,
         	path: "./content/tests/"
+        },
+        exportToMarkdown: {
+        	enabled: false,
+        	path: "./content/md/tests"
         }
     };
 
@@ -70,6 +75,7 @@ describe( "gatsby-node", function() {
         	getDeletedPosts: jsonGetDeletedPosts
         } );
         exportToJsonStub = sinon.stub();
+        exportToMarkdownStub = sinon.stub();
         pluginBoundActionCreators = {
             createNode: sinon.stub(),
             deleteNode: sinon.stub(),
@@ -107,7 +113,8 @@ describe( "gatsby-node", function() {
         const gatsbyNode = proxyquire( "../../src/gatsby-node.js", {
             "./sqlDataSource": sqlStub,
             "./jsonDataSource": jsonStub,
-            "./exports/postToJson": exportToJsonStub
+            "./exportPostToJson": exportToJsonStub,
+            "./exportNodeToMarkdown": exportToMarkdownStub
         } );
         gatsbyNode.sourceNodes( ...inputArgs );
     } );
@@ -165,6 +172,10 @@ describe( "gatsby-node", function() {
 	        it( "should not export json", () => {
 	        	exportToJsonStub.should.not.be.called();
 	        } );
+
+	        it( "should not export markdown", () => {
+	        	exportToMarkdownStub.should.not.be.called();
+	        } );
 	    } );
 
 	    describe( "when exportToJson is enabled", () => {
@@ -178,6 +189,20 @@ describe( "gatsby-node", function() {
 
 	        it( "should not export json", () => {
 	        	exportToJsonStub.should.not.be.called();
+	        } );
+	    } );
+
+	    describe( "when exportToMarkdown is enabled", () => {
+	        before( () => {
+	            pluginOptions.exportToMarkdown.enabled = true;
+	        } );
+
+	        after( () => {
+				pluginOptions.exportToMarkdown.enabled = false;
+	        } );
+
+	        it( "should not export markdown", () => {
+	        	exportToMarkdownStub.should.not.be.called();
 	        } );
 	    } );
     } );
@@ -223,6 +248,10 @@ describe( "gatsby-node", function() {
 
 	        it( "should not export json", () => {
 	        	exportToJsonStub.should.not.be.called();
+	        } );
+
+	        it( "should not export markdown", () => {
+	        	exportToMarkdownStub.should.not.be.called();
 	        } );
 	    } );
 
@@ -458,6 +487,20 @@ describe( "gatsby-node", function() {
 	        	exportToJsonStub.should.not.be.called();
 	        } );
 	    } );
+
+	    describe( "when exportToMarkdown is enabled", () => {
+	        before( () => {
+	            pluginOptions.exportToMarkdown.enabled = true;
+	        } );
+
+	        after( () => {
+				pluginOptions.exportToMarkdown.enabled = false;
+	        } );
+
+	        it( "should export markdown", () => {
+	        	exportToMarkdownStub.should.be.called();
+	        } );
+	    } );
     } );
 
     describe( "using sql data source", () => {
@@ -509,6 +552,10 @@ describe( "gatsby-node", function() {
 
 	        it( "should not export json", () => {
 	        	exportToJsonStub.should.not.be.called();
+	        } );
+
+	        it( "should not export markdown", () => {
+	        	exportToMarkdownStub.should.not.be.called();
 	        } );
 	    } );
 
@@ -742,6 +789,20 @@ describe( "gatsby-node", function() {
 
 		    it( "should export json", () => {
 		        exportToJsonStub.should.be.calledTwice();
+		    } );
+	    } );
+
+	    describe( "when exportToMarkdown is enabled", () => {
+	        before( () => {
+	            pluginOptions.exportToMarkdown.enabled = true;
+	        } );
+
+	        after( () => {
+				pluginOptions.exportToMarkdown.enabled = false;
+	        } );
+
+		    it( "should export markdown", () => {
+		        exportToMarkdownStub.should.be.calledTwice();
 		    } );
 	    } );
 	} );
