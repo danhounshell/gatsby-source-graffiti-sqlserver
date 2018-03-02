@@ -1,101 +1,14 @@
 const _ = require( "lodash" );
-const crypto = require( "crypto" );
-const fs = require("fs");
-const htmlToText = require( "html-to-text" );
-const path = require( "path" );
+const transformPostToNode = require( "./transformPostToNode" );
+const exportToJson = require( "./exports/postToJson" );
 const SQL = require( "./sqlDataSource" );
 const json = require( "./jsonDataSource" );
 const staticData = require( "./staticDataSource.json" );
 
-const writeNodeToJson = ( post, options ) => {
+const writePostToJson = ( post, options ) => {
 	if ( options.dataSource.type === "sql" && options.exportToJson && options.exportToJson.enabled && options.exportToJson.path ) {
-		const postDate = new Date( post.publishedOn );
-		const fileTitle = postDate.getFullYear() + "-" + ( "0" + ( postDate.getMonth() + 1 ) ).slice( -2 ) + "-" + ( "0" + postDate.getDate() ).slice( -2 ) + "-" + _.kebabCase( post.slug ) + ".json";
-		const filePath = path.join( options.exportToJson.path, `/${ fileTitle }` );
-		const fileAlreadyExists = fs.existsSync( filePath );
-		if ( options.exportToJson.overwriteExisting || !fileAlreadyExists ) {
-			fs.writeFileSync( filePath, JSON.stringify( post, null, 4 ), "utf8" );
-		}
+		exportToJson( post, options );
 	}
-};
-
-// remove json file
-
-const transformPostToNode = ( post, options ) => {
-	const internal = {
-		type: "GraffitiBlogPost",
-		mediaType: post.contentType,
-		contentDigest: crypto.createHash( "md5" ).update( JSON.stringify( post ) ).digest( "hex" )
-	}
-
-	if ( post.comments && post.comments.length > 0 ) {
-		const oldComments = _.cloneDeep( post.comments );
-		post.comments = [];
-		_.each( oldComments, ( oldComment ) => {
-			const newComment = {
-				id: oldComment.id,
-				date: oldComment.publishedOn,
-				author: {
-					name: oldComment.author,
-					url: oldComment.authorUrl
-				},
-				html: oldComment.content,
-				isTrackback: oldComment.isTrackback
-			}
-			post.comments.push( newComment );
-		} );
-	}
-
-	let newPostBody = post.postBody;
-	if ( options.replaceStrings ) {
-		_.each( options.replaceStrings, ( replaceString ) => {
-			const regex = new RegExp( replaceString.source, "g" );
-			newPostBody = newPostBody.replace( regex, replaceString.value );
-		} );
-	}
-
-	let cover = "";
-	const regex = /<img[^>]+src="?([^"\s]+)"?[^>]*\/>/g;
-	const regexResults = regex.exec( newPostBody );
-	if ( regexResults ) {
-		cover = regexResults[ 1 ];
-	}
-
-	const node = {
-		id: post.id,
-		internal,
-		parent: null,
-		children: [],
-		html: newPostBody,
-		slug: _.kebabCase( post.slug ),
-		author: { name: post.createdBy },
-		comments: post.comments,
-		frontmatter: {
-			title: post.title,
-			date: post.publishedOn,
-			description: _.truncate(
-				htmlToText.fromString(
-					newPostBody,
-					{
-						ignoreHref: true,
-						ignoreImage: true
-					}
-				),
-				{
-					length: options.descriptionLength,
-					separator: " "
-				}
-			),
-			tags: post.tags.split(","),
-			layout: ( post.category.trim().toLowerCase() === "uncategorized" ) ? "page" : "post",
-			category: post.category,
-			cover: cover,
-			draft: false
-		}
-	}
-
-	// Stringify date objects
-	return JSON.parse( JSON.stringify( node ) );
 }
 
 exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOptions ) => {
@@ -145,7 +58,7 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 		staticData;
 	if ( newPosts && newPosts.length > 0 ) {
 		newPosts.forEach( post => {
-			writeNodeToJson( post, options );
+			writePostToJson( post, options );
 			createNode( transformPostToNode( post, options ) );
 		} );
 		reporter.info( `fetched ${ newPosts.length } new nodes`)
@@ -161,6 +74,7 @@ exports.sourceNodes = async ( { boundActionCreators, reporter, store }, pluginOp
 			null;
 		if ( deletedPosts && deletedPosts.length > 0 ) {
 			deletedPosts.forEach( post => {
+				// remove json file
 				let node = transformPostToNode( post, options );
 				deleteNode( node.id, node );
 			} );

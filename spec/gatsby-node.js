@@ -2,13 +2,11 @@ require( "./helpers/setup" );
 
 describe( "gatsby-node", function() {
     let sqlStub, sqlGetNewPosts, sqlGetDeletedPosts,
-        jsonStub, jsonGetNewPosts, jsonGetDeletedPosts,
-        fsStub, fsExistsSyncStub, fsWriteFileSyncStub,
+        jsonStub, jsonGetNewPosts, jsonGetDeletedPosts, exportToJsonStub,
         pluginBoundActionCreators, pluginReporter, pluginStore;
 
     let sqlShouldResolve = true;
     let jsonShouldResolve = true;
-    let fileAlreadyExists = false;
     let thisPluginIsNull = false;
     let thisPluginIsEmpty = false;
     let lastFetchedPosts = Date.now();
@@ -71,12 +69,7 @@ describe( "gatsby-node", function() {
         	getNewPosts: jsonGetNewPosts,
         	getDeletedPosts: jsonGetDeletedPosts
         } );
-        fsWriteFileSyncStub = sinon.stub();
-        fsExistsSyncStub = sinon.stub().returns( fileAlreadyExists );
-        fsStub = {
-        	writeFileSync: fsWriteFileSyncStub,
-        	existsSync: fsExistsSyncStub
-        };
+        exportToJsonStub = sinon.stub();
         pluginBoundActionCreators = {
             createNode: sinon.stub(),
             deleteNode: sinon.stub(),
@@ -114,7 +107,7 @@ describe( "gatsby-node", function() {
         const gatsbyNode = proxyquire( "../../src/gatsby-node.js", {
             "./sqlDataSource": sqlStub,
             "./jsonDataSource": jsonStub,
-            fs: fsStub
+            "./exports/postToJson": exportToJsonStub
         } );
         gatsbyNode.sourceNodes( ...inputArgs );
     } );
@@ -130,7 +123,7 @@ describe( "gatsby-node", function() {
         pluginBoundActionCreators.deleteNode.reset();
         pluginBoundActionCreators.setPluginStatus.reset();
         pluginReporter.info.reset();
-        fsWriteFileSyncStub.reset();
+        exportToJsonStub.reset();
     } );
 
     describe( "using static data source", () => {
@@ -170,7 +163,7 @@ describe( "gatsby-node", function() {
 	        } );
 
 	        it( "should not export json", () => {
-	        	fsWriteFileSyncStub.should.not.be.called();
+	        	exportToJsonStub.should.not.be.called();
 	        } );
 	    } );
 
@@ -184,7 +177,7 @@ describe( "gatsby-node", function() {
 	        } );
 
 	        it( "should not export json", () => {
-	        	fsWriteFileSyncStub.should.not.be.called();
+	        	exportToJsonStub.should.not.be.called();
 	        } );
 	    } );
     } );
@@ -229,7 +222,7 @@ describe( "gatsby-node", function() {
 	        } );
 
 	        it( "should not export json", () => {
-	        	fsWriteFileSyncStub.should.not.be.called();
+	        	exportToJsonStub.should.not.be.called();
 	        } );
 	    } );
 
@@ -462,7 +455,7 @@ describe( "gatsby-node", function() {
 	        } );
 
 	        it( "should not export json", () => {
-	        	fsWriteFileSyncStub.should.not.be.called();
+	        	exportToJsonStub.should.not.be.called();
 	        } );
 	    } );
     } );
@@ -515,7 +508,7 @@ describe( "gatsby-node", function() {
 	        } );
 
 	        it( "should not export json", () => {
-	        	fsWriteFileSyncStub.should.not.be.called();
+	        	exportToJsonStub.should.not.be.called();
 	        } );
 	    } );
 
@@ -747,57 +740,9 @@ describe( "gatsby-node", function() {
 				pluginOptions.exportToJson.enabled = false;
 	        } );
 
-	        describe( "when json file does not already exist", () => {
-		        it( "should export json", () => {
-		        	fsWriteFileSyncStub.should.be.calledTwice();
-		        } );
-	        } );
-
-	        describe( "when json file already exists and overwrite is enabled", () => {
-	        	before( () => {
-	        		fileAlreadyExists = true;
-	        		pluginOptions.exportToJson.overwriteExisting = true;
-	        	} );
-
-	        	after( () => {
-	        		fileAlreadyExists = false;
-	        		pluginOptions.exportToJson.overwriteExisting = null;
-	        	} );
-
-		        it( "should export json", () => {
-		        	fsWriteFileSyncStub.should.be.calledTwice();
-		        } );
-	        } );
-
-	        describe( "when json file already exists and overwrite is default", () => {
-	        	before( () => {
-	        		fileAlreadyExists = true;
-	        	} );
-
-	        	after( () => {
-	        		fileAlreadyExists = false;
-	        	} );
-
-		        it( "should export json", () => {
-		        	fsWriteFileSyncStub.should.not.be.called();
-		        } );
-	        } );
-
-	        describe( "when json file already exists and overwrite is disabled", () => {
-	        	before( () => {
-	        		fileAlreadyExists = true;
-	        		pluginOptions.exportToJson.overwriteExisting = false;
-	        	} );
-
-	        	after( () => {
-	        		fileAlreadyExists = false;
-					pluginOptions.exportToJson.overwriteExisting = null;
-	        	} );
-
-		        it( "should export json", () => {
-		        	fsWriteFileSyncStub.should.not.be.called();
-		        } );
-	        } );
+		    it( "should export json", () => {
+		        exportToJsonStub.should.be.calledTwice();
+		    } );
 	    } );
 	} );
 } );
