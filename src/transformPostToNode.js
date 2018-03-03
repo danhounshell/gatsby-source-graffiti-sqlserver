@@ -73,7 +73,7 @@ module.exports = ( post, options ) => {
 					length: options.descriptionLength,
 					separator: " "
 				}
-			).replace( /\\n/g, " " ),
+			).replace( /\n/g, " " ),
 			tags: post.tags.split(","),
 			layout: ( post.category.trim().toLowerCase() === "uncategorized" ) ? "page" : "post",
 			category: post.category,
